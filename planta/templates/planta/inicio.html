@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alertas y paradas</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0 auto; padding: 16px; max-width: 1100px; color: #222; }
+    header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+             border-bottom: 2px solid #ddd; padding-bottom: 8px; }
+    section { margin-top: 20px; }
+    h2 { font-size: 1.1em; margin-bottom: 6px; }
+    table { border-collapse: collapse; width: 100%; font-size: .9em; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: top; }
+    th { background: #f2f2f2; }
+    .mensajes { list-style: none; padding: 0; }
+    .mensajes li { padding: 8px; margin-bottom: 4px; border-radius: 4px; }
+    .success { background: #e3f6e5; } .error { background: #fde2e2; } .warning { background: #fff4d6; }
+    .errorlist { color: #b00020; margin: 0; padding-left: 16px; }
+    .cancelada { color: #888; }
+    form.en-linea { display: flex; gap: 4px; }
+    .caja { border: 1px solid #ddd; padding: 10px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+<header>
+  <strong>Alertas y paradas de máquina</strong>
+  <span>
+    Usuario: <b>{{ user.get_username }}</b> ({{ rol }})
+    <form method="post" action="{% url 'logout' %}" style="display:inline">
+      {% csrf_token %}
+      <button type="submit">Cerrar sesión</button>
+    </form>
+  </span>
+</header>
+
+{% if messages %}
+<ul class="mensajes">
+  {% for mensaje in messages %}<li class="{{ mensaje.tags }}">{{ mensaje }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if form_editar %}
+<section class="caja">
+  <h2>Editar alerta #{{ alerta_en_edicion.pk }}</h2>
+  <form method="post" action="{% url 'planta:editar_alerta' alerta_en_edicion.pk %}">
+    {% csrf_token %}
+    {{ form_editar.as_p }}
+    <button type="submit">Guardar cambios</button>
+    <a href="{% url 'planta:inicio' %}">Cancelar edición</a>
+  </form>
+</section>
+{% endif %}
+
+{% if form_alerta %}
+<section class="caja">
+  <h2>Nueva alerta</h2>
+  <form method="post" action="{% url 'planta:crear_alerta' %}">
+    {% csrf_token %}
+    {{ form_alerta.as_p }}
+    <button type="submit">Registrar alerta</button>
+  </form>
+</section>
+{% endif %}
+
+{% if form_parada %}
+<section class="caja">
+  <h2>Registrar parada</h2>
+  <form method="post" action="{% url 'planta:crear_parada' %}">
+    {% csrf_token %}
+    {{ form_parada.as_p }}
+    <button type="submit">Registrar parada</button>
+  </form>
+</section>
+{% endif %}
+
+<section>
+  <h2>{% if perms.planta.view_alerta %}Alertas{% else %}Mis alertas{% endif %} ({{ alertas|length }})</h2>
+  <table>
+    <tr>
+      <th>#</th><th>Máquina</th><th>Descripción</th><th>Reportada por</th><th>Fecha</th>
+      {% if perms.planta.change_alerta %}<th>Acción</th>{% endif %}
+    </tr>
+    {% for alerta in alertas %}
+    <tr>
+      <td>{{ alerta.pk }}</td>
+      <td>{{ alerta.maquina }}</td>
+      <td>{{ alerta.descripcion|linebreaksbr }}</td>
+      <td>{{ alerta.usuario.get_username }}</td>
+      <td>{{ alerta.fecha|date:"Y-m-d H:i" }}</td>
+      {% if perms.planta.change_alerta %}
+      <td><a href="{% url 'planta:editar_alerta' alerta.pk %}">Editar</a></td>
+      {% endif %}
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">No hay alertas.</td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+{% if perms.planta.view_parada %}
+<section>
+  <h2>Paradas ({{ paradas|length }})</h2>
+  <table>
+    <tr>
+      <th>#</th><th>Máquina</th><th>Inicio</th><th>Finalización</th><th>Duración (min)</th>
+      <th>Motivo</th><th>Registrada por</th><th>Estado</th>
+      {% if perms.planta.cancelar_parada %}<th>Cancelar</th>{% endif %}
+    </tr>
+    {% for parada in paradas %}
+    <tr {% if parada.cancelada %}class="cancelada"{% endif %}>
+      <td>{{ parada.pk }}</td>
+      <td>{{ parada.maquina }}</td>
+      <td>{{ parada.inicio|date:"Y-m-d H:i" }}</td>
+      <td>{{ parada.fin|date:"Y-m-d H:i" }}</td>
+      <td>{{ parada.duracion_minutos }}</td>
+      <td>{{ parada.motivo|linebreaksbr }}</td>
+      <td>{{ parada.usuario.get_username }}</td>
+      <td>
+        {% if parada.cancelada %}
+          Cancelada por {{ parada.cancelada_por.get_username }} el {{ parada.cancelada_en|date:"Y-m-d H:i" }}.
+          Motivo: {{ parada.motivo_cancelacion }}
+        {% else %}
+          Activa
+        {% endif %}
+      </td>
+      {% if perms.planta.cancelar_parada %}
+      <td>
+        {% if not parada.cancelada %}
+        <form class="en-linea" method="post" action="{% url 'planta:cancelar_parada' parada.pk %}">
+          {% csrf_token %}
+          <input type="text" name="motivo" maxlength="500" placeholder="Motivo" required>
+          <button type="submit">Cancelar</button>
+        </form>
+        {% else %}—{% endif %}
+      </td>
+      {% endif %}
+    </tr>
+    {% empty %}
+    <tr><td colspan="9">No hay paradas.</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 360px; margin: 60px auto; padding: 16px; }
+    .errorlist { color: #b00020; padding-left: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Alertas y paradas</h1>
+  <h2>Iniciar sesión</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Entrar</button>
+  </form>
+</body>
+</html>
